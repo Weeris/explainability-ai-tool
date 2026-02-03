@@ -1550,6 +1550,10 @@ def show_internal_compliance():
 def show_model_testing():
     st.header("🧪 Model Testing with Central Bank Test Sets")
     
+    # Initialize test_results if not exists
+    if 'test_results' not in st.session_state:
+        st.session_state.test_results = []
+    
     # Predefined central bank test sets
     central_bank_datasets = {
         "Credit Risk Test Set": "demo_credit_risk.csv",
@@ -1733,8 +1737,6 @@ def show_model_testing():
             'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
-        if 'test_results' not in st.session_state:
-            st.session_state.test_results = []
         st.session_state.test_results.append(test_results)
         
         st.success("Model testing completed and results saved!")
