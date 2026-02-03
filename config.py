@@ -9,7 +9,7 @@ class Config:
     """Base configuration class"""
     
     # Application settings
-    APP_NAME = "Explainability AI Tool (Noor)"
+    APP_NAME = "Explainability AI Tool"
     VERSION = "0.1.0"
     DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
     

@@ -47,7 +47,7 @@ if 'use_cases' not in st.session_state:
     ]
 
 def main():
-    st.title("🔍 Explainability AI Tool (Project Noor)")
+    st.title("🔍 Explainability AI Tool")
     st.markdown("""
     A comprehensive system for explaining and comparing Machine Learning/AI models used by banks.
     This tool enables central banks to understand, compare, and supervise the AI models used by different financial institutions.

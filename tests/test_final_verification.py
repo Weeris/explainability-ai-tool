@@ -45,7 +45,6 @@ class TestFinalVerification(unittest.TestCase):
         
         self.assertGreater(len(content), 100, "README should have substantial content")
         self.assertIn("Explainability AI Tool", content)
-        self.assertIn("Project Noor", content)
         self.assertIn("Project Veritas", content)
     
     def test_main_app_structure(self):

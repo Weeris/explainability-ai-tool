@@ -1,7 +1,7 @@
-# Test Summary - Explainability AI Tool (Project Noor)
+# Test Summary - Explainability AI Tool
 
 ## Overview
-This document summarizes the comprehensive testing performed on the Explainability AI Tool (Project Noor) before GitHub deployment.
+This document summarizes the comprehensive testing performed on the Explainability AI Tool before GitHub deployment.
 
 ## Test Results
 - **Total Tests Passed**: 11/11 (100% success rate)
@@ -66,4 +66,4 @@ The application is fully tested and ready for GitHub deployment with:
 - Code quality assurance
 
 ## Conclusion
-All tests have passed successfully. The Explainability AI Tool (Project Noor) meets all quality standards and is ready for deployment to GitHub.
+All tests have passed successfully. The Explainability AI Tool meets all quality standards and is ready for deployment to GitHub.

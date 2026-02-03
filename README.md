@@ -1,4 +1,4 @@
-# Explainability AI Tool (Project Noor)
+# Explainability AI Tool
 
 ## Overview
 A comprehensive system for explaining and comparing Machine Learning/AI models used by banks. This tool enables central banks to understand, compare, and supervise the AI models used by different financial institutions, ensuring transparency and regulatory compliance. The system incorporates concepts from Project Veritas by MAS (Monetary Authority of Singapore) for explainable AI validation in financial services.
@@ -86,8 +86,8 @@ The application is ready for deployment on Streamlit Community Cloud. Simply con
 ## Usage
 1. Access the application through your browser
 2. Choose between Bank View or Supervisor View
-3. Upload your dataset or use the demo credit risk model
-4. Train and analyze your models
+3. Use the demo models or test with central bank test sets
+4. Analyze your models using the explainability tools
 5. Use the Project Veritas validation framework to assess your models
 
 ## Development
