@@ -45,7 +45,57 @@ The system consists of:
 6. Privacy-preserving computation module
 
 ## Installation
-Detailed installation instructions will be provided in the setup guide.
+
+### Local Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Weeris/explainability-ai-tool.git
+   cd explainability-ai-tool
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Run the application:
+   ```bash
+   streamlit run app.py
+   ```
+
+### Using Docker
+1. Build the Docker image:
+   ```bash
+   docker build -t explainability-ai-tool .
+   ```
+
+2. Run the container:
+   ```bash
+   docker run -p 8501:8501 explainability-ai-tool
+   ```
+
+## Streamlit Sharing Deployment
+The application is ready for deployment on Streamlit Community Cloud. Simply connect your GitHub repository to [share.streamlit.io](https://share.streamlit.io) and the app will be automatically deployed.
+
+### Requirements for Streamlit Sharing
+- Public GitHub repository
+- `requirements.txt` file with all dependencies
+- `.streamlit/config.toml` for theme customization
+- Entry point at `app.py`
 
 ## Usage
-Instructions for using the tool will be provided in the user manual.
+1. Access the application through your browser
+2. Choose between Bank View or Supervisor View
+3. Upload your dataset or use the demo credit risk model
+4. Train and analyze your models
+5. Use the Project Veritas validation framework to assess your models
+
+## Development
+To run the tests:
+```bash
+pip install -r requirements-test.txt
+python -m pytest tests/
+```
+
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
