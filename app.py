@@ -186,7 +186,7 @@ def show_model_explainability():
     st.header("Model Explainability")
     
     if not st.session_state.models:
-        st.warning("No models available.")
+        st.warning("Please train a model first in the 'Train Model' section.")
         return
     
     # Filter models to only show Bank A models
@@ -205,174 +205,22 @@ def show_model_explainability():
     
     st.subheader(f"Model: {model_name}")
     
-    # Only show the validation framework (renamed from Project Veritas)
+    # Validation framework based on industry standards
     st.info("🔬 Explainable AI Validation Framework based on industry standards")
     
-    # Only show validation framework with tabs
-    show_validation_framework_tabs(model, X_test, feature_names, model_info)
-
-def show_validation_framework_tabs(model, X_test, feature_names, model_info):
-    # Create tabs for different validation aspects
-    tab1, tab2, tab3, tab4 = st.tabs(["Explainability", "Fairness", "Performance", "Robustness"])
+    explanation_method = st.radio(
+        "Choose explanation method:",
+        ["SHAP", "LIME", "Feature Importance", "Validation Framework"]
+    )
     
-    with tab1:
-        st.header("Explainability Assessment")
-        st.write("Analyzing how the model arrives at its decisions using multiple explanation methods:")
-        
-        # SHAP explanation
-        st.subheader("SHAP Analysis")
-        try:
-            explainer = shap.TreeExplainer(model) if hasattr(model, 'tree') else shap.LinearExplainer(model, X_test)
-            shap_values = explainer.shap_values(X_test.iloc[:50])  # Use subset for performance
-            
-            # Handle binary classification
-            if len(shap_values.shape) == 2 and shap_values.shape[1] == len(feature_names):
-                shap_vals = shap_values
-            else:
-                shap_vals = shap_values[1] if isinstance(shap_values, list) else shap_values
-            
-            # Summary plot
-            fig, ax = plt.subplots(figsize=(10, 6))
-            shap.summary_plot(shap_vals, X_test.iloc[:50], feature_names=feature_names, show=False)
-            plt.tight_layout()
-            st.pyplot(fig)
-            plt.clf()
-        except:
-            st.warning("SHAP analysis not available for this model type")
-        
-        # Feature importance
-        st.subheader("Feature Importance")
-        if hasattr(model, 'feature_importances_'):
-            importance_df = pd.DataFrame({
-                'feature': feature_names,
-                'importance': model.feature_importances_
-            }).sort_values('importance', ascending=False)
-            
-            fig = px.bar(importance_df, x='importance', y='feature', orientation='h',
-                         title="Feature Importance", labels={'importance': 'Importance', 'feature': 'Feature'})
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Feature importance not available for this model type")
-    
-    with tab2:
-        st.header("Fairness Assessment")
-        st.write("Evaluating model fairness across different groups (simulated analysis):")
-        
-        # Simulate fairness analysis
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Demographic Parity Check")
-            st.write("Ensuring equal positive prediction rates across groups")
-            
-            # Simulate group analysis
-            groups = ['Group A', 'Group B', 'Group C']
-            pos_rates = [0.62, 0.58, 0.65]  # Simulated positive prediction rates
-            
-            fairness_df = pd.DataFrame({
-                'Group': groups,
-                'Positive Rate': pos_rates
-            })
-            
-            fig = px.bar(fairness_df, x='Group', y='Positive Rate', 
-                         title="Positive Prediction Rate by Group",
-                         range_y=[0, 1])
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Equal Opportunity Check")
-            st.write("Ensuring equal true positive rates across groups")
-            
-            tpr_rates = [0.71, 0.68, 0.73]  # Simulated true positive rates
-            opp_df = pd.DataFrame({
-                'Group': groups,
-                'True Positive Rate': tpr_rates
-            })
-            
-            fig = px.bar(opp_df, x='Group', y='True Positive Rate',
-                         title="True Positive Rate by Group",
-                         range_y=[0, 1])
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab3:
-        st.header("Performance Assessment")
-        st.write("Evaluating model performance metrics:")
-        
-        # Calculate performance metrics
-        y_pred = model.predict(X_test)
-        y_true = model_info['y_test'][:len(y_pred)]  # Align with predictions
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            accuracy = accuracy_score(y_true, y_pred)
-            st.metric("Accuracy", f"{accuracy:.3f}")
-        
-        with col2:
-            from sklearn.metrics import precision_score, recall_score
-            try:
-                precision = precision_score(y_true, y_pred, average='weighted', zero_division=0)
-                st.metric("Precision", f"{precision:.3f}")
-            except:
-                st.metric("Precision", "N/A")
-        
-        with col3:
-            try:
-                recall = recall_score(y_true, y_pred, average='weighted', zero_division=0)
-                st.metric("Recall", f"{recall:.3f}")
-            except:
-                st.metric("Recall", "N/A")
-        
-        # ROC curve for binary classification
-        if len(np.unique(y_true)) == 2:
-            from sklearn.metrics import roc_curve, auc
-            y_pred_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
-            fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
-            roc_auc = auc(fpr, tpr)
-            
-            fig = px.line(x=fpr, y=tpr, title=f"ROC Curve (AUC = {roc_auc:.3f})")
-            fig.add_shape(type='line', x0=0, x1=1, y0=0, y1=1, line=dict(dash='dash'))
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with tab4:
-        st.header("Robustness Assessment")
-        st.write("Testing model reliability under various conditions:")
-        
-        # Perturbation analysis
-        st.subheader("Input Perturbation Test")
-        st.write("How model predictions change with small input variations")
-        
-        if len(X_test) > 0:
-            sample_idx = st.slider("Select sample to perturb:", 0, min(len(X_test)-1, 10), 0)
-            original_sample = X_test.iloc[sample_idx].copy()
-            original_pred = model.predict([original_sample])[0]
-            
-            st.write(f"Original prediction: {original_pred}")
-            
-            # Add small perturbations
-            perturbed_samples = []
-            predictions = []
-            
-            for i in range(10):
-                perturbation = np.random.normal(0, 0.01, size=original_sample.shape)  # 1% std deviation
-                perturbed_sample = original_sample + perturbation
-                perturbed_sample = pd.DataFrame([perturbed_sample], columns=X_test.columns)
-                
-                pred = model.predict(perturbed_sample)[0]
-                perturbed_samples.append(i)
-                predictions.append(pred)
-            
-            robustness_df = pd.DataFrame({
-                'Perturbation': perturbed_samples,
-                'Prediction': predictions
-            })
-            
-            fig = px.line(robustness_df, x='Perturbation', y='Prediction',
-                          title="Prediction Stability Under Input Perturbation")
-            st.plotly_chart(fig, use_container_width=True)
-            
-            stability = 1 - (len(set(predictions)) / len(predictions))
-            st.metric("Prediction Stability", f"{stability:.2%}")
+    if explanation_method == "SHAP":
+        show_shap_explanation(model, X_test, feature_names)
+    elif explanation_method == "LIME":
+        show_lime_explanation(model, X_test, feature_names)
+    elif explanation_method == "Feature Importance":
+        show_feature_importance(model, feature_names)
+    elif explanation_method == "Validation Framework":
+        show_project_veritas_validation(model, X_test, feature_names, model_info)
 
 def show_project_veritas_validation(model, X_test, feature_names, model_info):
     st.subheader("Validation Framework")
