@@ -53,11 +53,11 @@ def main():
     This tool enables central banks to understand, compare, and supervise the AI models used by different financial institutions.
     """)
     
-    # Create tabs for Bank and Supervisor views
-    view_mode = st.radio("Select View:", ["Bank View", "Supervisor View"], horizontal=True)
+    # Create tabs for Bank and Supervisor views - moved to sidebar
+    view_mode = st.sidebar.radio("Select View:", ["Bank A View", "Supervisor View"], horizontal=True)
     
-    if view_mode == "Bank View":
-        show_bank_view()
+    if view_mode == "Bank A View":
+        show_bank_a_view()
     else:
         show_supervisor_view()
 
@@ -186,39 +186,199 @@ def show_model_explainability():
     st.header("Model Explainability")
     
     if not st.session_state.models:
-        st.warning("Please train a model first in the 'Train Model' section.")
+        st.warning("No models available.")
         return
     
-    model_name = st.selectbox("Select model:", list(st.session_state.models.keys()))
-    model_info = st.session_state.models[model_name]
+    # Filter models to only show Bank A models
+    bank_a_models = {k: v for k, v in st.session_state.models.items() 
+                     if v.get('bank_name', '').startswith('Bank A')}
+    
+    if not bank_a_models:
+        st.warning("No Bank A models available. Please generate or load some Bank A models first.")
+        return
+    
+    model_name = st.selectbox("Select Bank A model:", list(bank_a_models.keys()))
+    model_info = bank_a_models[model_name]
     model = model_info['model']
     X_test = model_info['X_test']
     feature_names = model_info['feature_names']
     
     st.subheader(f"Model: {model_name}")
     
-    # Project Veritas-inspired validation framework
-    st.info("🔬 Based on Project Veritas: Explainable AI Validation Framework by MAS")
+    # Only show the validation framework (renamed from Project Veritas)
+    st.info("🔬 Explainable AI Validation Framework based on industry standards")
     
-    explanation_method = st.radio(
-        "Choose explanation method:",
-        ["SHAP", "LIME", "Feature Importance", "Project Veritas Validation"]
-    )
+    # Only show validation framework with tabs
+    show_validation_framework_tabs(model, X_test, feature_names, model_info)
+
+def show_validation_framework_tabs(model, X_test, feature_names, model_info):
+    # Create tabs for different validation aspects
+    tab1, tab2, tab3, tab4 = st.tabs(["Explainability", "Fairness", "Performance", "Robustness"])
     
-    if explanation_method == "SHAP":
-        show_shap_explanation(model, X_test, feature_names)
-    elif explanation_method == "LIME":
-        show_lime_explanation(model, X_test, feature_names)
-    elif explanation_method == "Feature Importance":
-        show_feature_importance(model, feature_names)
-    elif explanation_method == "Project Veritas Validation":
-        show_project_veritas_validation(model, X_test, feature_names, model_info)
+    with tab1:
+        st.header("Explainability Assessment")
+        st.write("Analyzing how the model arrives at its decisions using multiple explanation methods:")
+        
+        # SHAP explanation
+        st.subheader("SHAP Analysis")
+        try:
+            explainer = shap.TreeExplainer(model) if hasattr(model, 'tree') else shap.LinearExplainer(model, X_test)
+            shap_values = explainer.shap_values(X_test.iloc[:50])  # Use subset for performance
+            
+            # Handle binary classification
+            if len(shap_values.shape) == 2 and shap_values.shape[1] == len(feature_names):
+                shap_vals = shap_values
+            else:
+                shap_vals = shap_values[1] if isinstance(shap_values, list) else shap_values
+            
+            # Summary plot
+            fig, ax = plt.subplots(figsize=(10, 6))
+            shap.summary_plot(shap_vals, X_test.iloc[:50], feature_names=feature_names, show=False)
+            plt.tight_layout()
+            st.pyplot(fig)
+            plt.clf()
+        except:
+            st.warning("SHAP analysis not available for this model type")
+        
+        # Feature importance
+        st.subheader("Feature Importance")
+        if hasattr(model, 'feature_importances_'):
+            importance_df = pd.DataFrame({
+                'feature': feature_names,
+                'importance': model.feature_importances_
+            }).sort_values('importance', ascending=False)
+            
+            fig = px.bar(importance_df, x='importance', y='feature', orientation='h',
+                         title="Feature Importance", labels={'importance': 'Importance', 'feature': 'Feature'})
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Feature importance not available for this model type")
+    
+    with tab2:
+        st.header("Fairness Assessment")
+        st.write("Evaluating model fairness across different groups (simulated analysis):")
+        
+        # Simulate fairness analysis
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Demographic Parity Check")
+            st.write("Ensuring equal positive prediction rates across groups")
+            
+            # Simulate group analysis
+            groups = ['Group A', 'Group B', 'Group C']
+            pos_rates = [0.62, 0.58, 0.65]  # Simulated positive prediction rates
+            
+            fairness_df = pd.DataFrame({
+                'Group': groups,
+                'Positive Rate': pos_rates
+            })
+            
+            fig = px.bar(fairness_df, x='Group', y='Positive Rate', 
+                         title="Positive Prediction Rate by Group",
+                         range_y=[0, 1])
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.subheader("Equal Opportunity Check")
+            st.write("Ensuring equal true positive rates across groups")
+            
+            tpr_rates = [0.71, 0.68, 0.73]  # Simulated true positive rates
+            opp_df = pd.DataFrame({
+                'Group': groups,
+                'True Positive Rate': tpr_rates
+            })
+            
+            fig = px.bar(opp_df, x='Group', y='True Positive Rate',
+                         title="True Positive Rate by Group",
+                         range_y=[0, 1])
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with tab3:
+        st.header("Performance Assessment")
+        st.write("Evaluating model performance metrics:")
+        
+        # Calculate performance metrics
+        y_pred = model.predict(X_test)
+        y_true = model_info['y_test'][:len(y_pred)]  # Align with predictions
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            accuracy = accuracy_score(y_true, y_pred)
+            st.metric("Accuracy", f"{accuracy:.3f}")
+        
+        with col2:
+            from sklearn.metrics import precision_score, recall_score
+            try:
+                precision = precision_score(y_true, y_pred, average='weighted', zero_division=0)
+                st.metric("Precision", f"{precision:.3f}")
+            except:
+                st.metric("Precision", "N/A")
+        
+        with col3:
+            try:
+                recall = recall_score(y_true, y_pred, average='weighted', zero_division=0)
+                st.metric("Recall", f"{recall:.3f}")
+            except:
+                st.metric("Recall", "N/A")
+        
+        # ROC curve for binary classification
+        if len(np.unique(y_true)) == 2:
+            from sklearn.metrics import roc_curve, auc
+            y_pred_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
+            fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+            roc_auc = auc(fpr, tpr)
+            
+            fig = px.line(x=fpr, y=tpr, title=f"ROC Curve (AUC = {roc_auc:.3f})")
+            fig.add_shape(type='line', x0=0, x1=1, y0=0, y1=1, line=dict(dash='dash'))
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with tab4:
+        st.header("Robustness Assessment")
+        st.write("Testing model reliability under various conditions:")
+        
+        # Perturbation analysis
+        st.subheader("Input Perturbation Test")
+        st.write("How model predictions change with small input variations")
+        
+        if len(X_test) > 0:
+            sample_idx = st.slider("Select sample to perturb:", 0, min(len(X_test)-1, 10), 0)
+            original_sample = X_test.iloc[sample_idx].copy()
+            original_pred = model.predict([original_sample])[0]
+            
+            st.write(f"Original prediction: {original_pred}")
+            
+            # Add small perturbations
+            perturbed_samples = []
+            predictions = []
+            
+            for i in range(10):
+                perturbation = np.random.normal(0, 0.01, size=original_sample.shape)  # 1% std deviation
+                perturbed_sample = original_sample + perturbation
+                perturbed_sample = pd.DataFrame([perturbed_sample], columns=X_test.columns)
+                
+                pred = model.predict(perturbed_sample)[0]
+                perturbed_samples.append(i)
+                predictions.append(pred)
+            
+            robustness_df = pd.DataFrame({
+                'Perturbation': perturbed_samples,
+                'Prediction': predictions
+            })
+            
+            fig = px.line(robustness_df, x='Perturbation', y='Prediction',
+                          title="Prediction Stability Under Input Perturbation")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            stability = 1 - (len(set(predictions)) / len(predictions))
+            st.metric("Prediction Stability", f"{stability:.2%}")
 
 def show_project_veritas_validation(model, X_test, feature_names, model_info):
-    st.subheader("Project Veritas Validation Framework")
+    st.subheader("Validation Framework")
     
     st.write("""
-    Project Veritas by MAS provides a validation framework for Explainable AI in financial services.
+    Industry-standard validation framework for Explainable AI in financial services.
     This includes:
     - **Explainability**: Understanding how models make decisions
     - **Fairness**: Ensuring models don't discriminate unfairly
@@ -739,18 +899,18 @@ def show_privacy_analysis():
         # Placeholder for privacy analysis
         st.info("Privacy analysis features would be implemented here to demonstrate how models can be analyzed without exposing sensitive data.")
 
-def show_bank_view():
-    st.header("🏦 Bank View - Model Development & Management")
+def show_bank_a_view():
+    st.header("🏦 Bank A View - Model Development & Management")
     
     # Bank-specific sidebar navigation
-    st.sidebar.header("Bank Navigation")
+    st.sidebar.header("Bank A Navigation")
     page = st.sidebar.selectbox(
         "Choose a function:",
         ["Dashboard", "Model Testing", "Model Explainability", "Internal Compliance"]
     )
     
     if page == "Dashboard":
-        show_bank_dashboard()
+        show_bank_a_dashboard()
     elif page == "Model Testing":
         show_model_testing()
     elif page == "Model Explainability":
@@ -765,7 +925,7 @@ def show_supervisor_view():
     st.sidebar.header("Supervisor Navigation")
     page = st.sidebar.selectbox(
         "Choose a function:",
-        ["Supervisor Dashboard", "Model Comparison", "Cross-Bank Analysis", "Regulatory Compliance", "Risk Assessment", "Model Testing Results"]
+        ["Supervisor Dashboard", "Model Comparison", "Cross-Bank Analysis", "Regulatory Compliance", "Risk Assessment"]
     )
     
     if page == "Supervisor Dashboard":
@@ -778,11 +938,9 @@ def show_supervisor_view():
         show_regulatory_compliance()
     elif page == "Risk Assessment":
         show_risk_assessment()
-    elif page == "Model Testing Results":
-        show_model_testing_results()
 
-def show_bank_dashboard():
-    st.subheader("Bank Dashboard")
+def show_bank_a_dashboard():
+    st.subheader("Bank A Dashboard")
     
     col1, col2, col3 = st.columns(3)
     
@@ -797,12 +955,6 @@ def show_bank_dashboard():
     st.write("- Credit risk model v2.1 submitted for review")
     st.write("- New loan application data ingested (50K records)")
     st.write("- Feature importance report generated")
-    
-    st.subheader("Quick Actions")
-    if st.button("Train New Credit Risk Model"):
-        st.session_state.active_tab = "Train Credit Risk Model"
-    if st.button("Generate Explainability Report"):
-        st.session_state.active_tab = "Model Explainability"
 
 def show_supervisor_dashboard_v2():
     st.subheader("Supervisor Dashboard - Model Oversight")
@@ -1361,8 +1513,12 @@ def show_internal_compliance():
     
     st.info("Bank's internal compliance review before submitting to supervisors.")
     
-    if st.session_state.models:
-        model_name = st.selectbox("Select model for internal compliance:", list(st.session_state.models.keys()))
+    # Filter models to only show Bank A models
+    bank_a_models = {k: v for k, v in st.session_state.models.items() 
+                     if v.get('bank_name', '').startswith('Bank A')}
+    
+    if bank_a_models:
+        model_name = st.selectbox("Select Bank A model for internal compliance:", list(bank_a_models.keys()))
         
         if st.button("Run Internal Compliance Check"):
             st.subheader(f"Compliance Report for: {model_name}")
@@ -1388,6 +1544,8 @@ def show_internal_compliance():
             st.write("- ⚠ Need stress testing scenarios")
             
             st.success("Internal compliance check completed. Ready for supervisor submission.")
+    else:
+        st.warning("No Bank A models available. Please generate or load some Bank A models first.")
 
 def show_model_testing():
     st.header("🧪 Model Testing with Central Bank Test Sets")
@@ -1401,95 +1559,111 @@ def show_model_testing():
         "Operational Risk Test Set": "demo_operational_risk.csv"
     }
     
+    # Filter models to only show Bank A models
+    bank_a_models = {k: v for k, v in st.session_state.models.items() 
+                     if v.get('bank_name', '').startswith('Bank A')}
+    
+    if not bank_a_models:
+        st.warning("No Bank A models available. Please generate or load some Bank A models first.")
+        return
+    
+    # Model selection for testing - only Bank A models
+    model_name = st.selectbox("Select Bank A model to test:", list(bank_a_models.keys()))
+    
     # Option to select from predefined test sets or upload custom
     test_source = st.radio("Select test data source:", ["Use Central Bank Test Set", "Upload Custom Test Set"])
     
+    # Select test dataset
     if test_source == "Use Central Bank Test Set":
         selected_dataset = st.selectbox("Select central bank test set:", list(central_bank_datasets.keys()))
         st.info(f"Selected: {selected_dataset}")
         
-        # Generate demo data based on selection
-        if st.button("Load Selected Test Set"):
-            if selected_dataset == "Credit Risk Test Set":
-                # Generate credit risk test data
-                np.random.seed(42)
-                n_samples = 500
-                
-                age = np.random.normal(40, 15, n_samples)
-                income = np.random.lognormal(10, 0.5, n_samples)
-                loan_amount = np.random.lognormal(9, 0.8, n_samples)
-                credit_score = np.random.normal(650, 100, n_samples)
-                employment_years = np.random.gamma(2, 2, n_samples)
-                
-                # Create synthetic target (loan default: 1 = default, 0 = no default)
-                default_prob = (
-                    0.1 +
-                    0.3 * (credit_score < 600) +
-                    0.2 * (income < 30000) +
-                    0.15 * (loan_amount / income > 0.3) +
-                    0.1 * (employment_years < 2) +
-                    np.random.normal(0, 0.1, n_samples)
-                )
-                default = (np.random.random(n_samples) < default_prob).astype(int)
-                
-                df = pd.DataFrame({
-                    'age': age,
-                    'income': income,
-                    'loan_amount': loan_amount,
-                    'credit_score': credit_score,
-                    'employment_years': employment_years,
-                    'default': default
-                })
-                
-                df['age'] = df['age'].round().astype(int)
-                df['income'] = df['income'].round(-2)
-                df['loan_amount'] = df['loan_amount'].round(-2)
-                df['credit_score'] = df['credit_score'].round().astype(int)
-                df['employment_years'] = df['employment_years'].round(1)
-                
-                st.session_state.datasets[selected_dataset.lower().replace(' ', '_') + '.csv'] = df
-                st.success(f"Loaded {selected_dataset} with {len(df)} samples!")
-                
-            elif selected_dataset == "Fraud Detection Test Set":
-                # Generate fraud detection test data
-                np.random.seed(42)
-                n_samples = 500
-                
-                transaction_amount = np.random.lognormal(8, 1.5, n_samples)
-                account_age_days = np.random.exponential(365, n_samples)
-                num_transactions_day = np.random.poisson(5, n_samples)
-                merchant_risk_score = np.random.uniform(0, 1, n_samples)
-                time_since_last_transaction = np.random.exponential(2, n_samples)
-                
-                # Create synthetic target (fraud: 1 = fraud, 0 = legitimate)
-                fraud_prob = (
-                    0.05 +
-                    0.2 * (transaction_amount > 5000) +
-                    0.1 * (merchant_risk_score > 0.8) +
-                    0.15 * (num_transactions_day > 10) +
-                    np.random.normal(0, 0.05, n_samples)
-                )
-                fraud = (np.random.random(n_samples) < fraud_prob).astype(int)
-                
-                df = pd.DataFrame({
-                    'transaction_amount': transaction_amount,
-                    'account_age_days': account_age_days,
-                    'num_transactions_day': num_transactions_day,
-                    'merchant_risk_score': merchant_risk_score,
-                    'time_since_last_transaction': time_since_last_transaction,
-                    'fraud': fraud
-                })
-                
-                df['transaction_amount'] = df['transaction_amount'].round(2)
-                df['account_age_days'] = df['account_age_days'].round().astype(int)
-                df['num_transactions_day'] = df['num_transactions_day'].round().astype(int)
-                df['merchant_risk_score'] = df['merchant_risk_score'].round(3)
-                df['time_since_last_transaction'] = df['time_since_last_transaction'].round(1)
-                
-                st.session_state.datasets[selected_dataset.lower().replace(' ', '_') + '.csv'] = df
-                st.success(f"Loaded {selected_dataset} with {len(df)} samples!")
+        # Auto-generate demo data based on selection
+        if selected_dataset == "Credit Risk Test Set":
+            # Generate credit risk test data
+            np.random.seed(42)
+            n_samples = 500
             
-            # Additional test sets would be implemented similarly...
+            age = np.random.normal(40, 15, n_samples)
+            income = np.random.lognormal(10, 0.5, n_samples)
+            loan_amount = np.random.lognormal(9, 0.8, n_samples)
+            credit_score = np.random.normal(650, 100, n_samples)
+            employment_years = np.random.gamma(2, 2, n_samples)
+            
+            # Create synthetic target (loan default: 1 = default, 0 = no default)
+            default_prob = (
+                0.1 +
+                0.3 * (credit_score < 600) +
+                0.2 * (income < 30000) +
+                0.15 * (loan_amount / income > 0.3) +
+                0.1 * (employment_years < 2) +
+                np.random.normal(0, 0.1, n_samples)
+            )
+            default = (np.random.random(n_samples) < default_prob).astype(int)
+            
+            df = pd.DataFrame({
+                'age': age,
+                'income': income,
+                'loan_amount': loan_amount,
+                'credit_score': credit_score,
+                'employment_years': employment_years,
+                'default': default
+            })
+            
+            df['age'] = df['age'].round().astype(int)
+            df['income'] = df['income'].round(-2)
+            df['loan_amount'] = df['loan_amount'].round(-2)
+            df['credit_score'] = df['credit_score'].round().astype(int)
+            df['employment_years'] = df['employment_years'].round(1)
+            
+            dataset_key = selected_dataset.lower().replace(' ', '_') + '.csv'
+            st.session_state.datasets[dataset_key] = df
+            st.success(f"Auto-loaded {selected_dataset} with {len(df)} samples!")
+            
+        elif selected_dataset == "Fraud Detection Test Set":
+            # Generate fraud detection test data
+            np.random.seed(42)
+            n_samples = 500
+            
+            transaction_amount = np.random.lognormal(8, 1.5, n_samples)
+            account_age_days = np.random.exponential(365, n_samples)
+            num_transactions_day = np.random.poisson(5, n_samples)
+            merchant_risk_score = np.random.uniform(0, 1, n_samples)
+            time_since_last_transaction = np.random.exponential(2, n_samples)
+            
+            # Create synthetic target (fraud: 1 = fraud, 0 = legitimate)
+            fraud_prob = (
+                0.05 +
+                0.2 * (transaction_amount > 5000) +
+                0.1 * (merchant_risk_score > 0.8) +
+                0.15 * (num_transactions_day > 10) +
+                np.random.normal(0, 0.05, n_samples)
+            )
+            fraud = (np.random.random(n_samples) < fraud_prob).astype(int)
+            
+            df = pd.DataFrame({
+                'transaction_amount': transaction_amount,
+                'account_age_days': account_age_days,
+                'num_transactions_day': num_transactions_day,
+                'merchant_risk_score': merchant_risk_score,
+                'time_since_last_transaction': time_since_last_transaction,
+                'fraud': fraud
+            })
+            
+            df['transaction_amount'] = df['transaction_amount'].round(2)
+            df['account_age_days'] = df['account_age_days'].round().astype(int)
+            df['num_transactions_day'] = df['num_transactions_day'].round().astype(int)
+            df['merchant_risk_score'] = df['merchant_risk_score'].round(3)
+            df['time_since_last_transaction'] = df['time_since_last_transaction'].round(1)
+            
+            dataset_key = selected_dataset.lower().replace(' ', '_') + '.csv'
+            st.session_state.datasets[dataset_key] = df
+            st.success(f"Auto-loaded {selected_dataset} with {len(df)} samples!")
+        
+        # Additional test sets would be implemented similarly...
+        
+        # Automatically select the auto-loaded dataset
+        test_dataset_name = dataset_key
     
     else:  # Upload Custom Test Set
         uploaded_file = st.file_uploader(
@@ -1503,68 +1677,67 @@ def show_model_testing():
             st.session_state.datasets[uploaded_file.name] = df
             st.success(f"Dataset '{uploaded_file.name}' uploaded successfully!")
             st.write(f"Shape: {df.shape}")
-    
-    # Model selection for testing
-    if st.session_state.models:
-        model_name = st.selectbox("Select model to test:", list(st.session_state.models.keys()))
-        
-        # Select test dataset
-        if st.session_state.datasets:
-            test_dataset_name = st.selectbox("Select test dataset:", list(st.session_state.datasets.keys()))
             
-            if st.button("Run Model Testing"):
-                model_info = st.session_state.models[model_name]
-                model = model_info['model']
-                test_data = st.session_state.datasets[test_dataset_name]
-                
-                # Prepare test data
-                feature_cols = [col for col in test_data.columns if col != 'default' and col != 'fraud']  # Adjust based on target column
-                X_test = test_data[feature_cols]
-                y_test = test_data[test_data.columns[-1]]  # Assuming target is last column
-                
-                # Handle categorical variables
-                X_test_encoded = pd.get_dummies(X_test, drop_first=True)
-                
-                # Make predictions
-                y_pred = model.predict(X_test_encoded)
-                
-                # Calculate metrics
-                accuracy = accuracy_score(y_test, y_pred)
-                
-                st.subheader(f"Testing Results for {model_name}")
-                st.metric("Accuracy", f"{accuracy:.3f}")
-                
-                # Detailed metrics
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric("Precision", f"{precision_score(y_test, y_pred, average='weighted', zero_division=0):.3f}")
-                with col2:
-                    st.metric("Recall", f"{recall_score(y_test, y_pred, average='weighted', zero_division=0):.3f}")
-                with col3:
-                    st.metric("F1-Score", f"{f1_score(y_test, y_pred, average='weighted', zero_division=0):.3f}")
-                
-                # Confusion matrix
-                cm = confusion_matrix(y_test, y_pred)
-                fig = px.imshow(cm, text_auto=True, title="Confusion Matrix")
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Save test results
-                test_results = {
-                    'model': model_name,
-                    'dataset': test_dataset_name,
-                    'accuracy': accuracy,
-                    'precision': precision_score(y_test, y_pred, average='weighted', zero_division=0),
-                    'recall': recall_score(y_test, y_pred, average='weighted', zero_division=0),
-                    'f1_score': f1_score(y_test, y_pred, average='weighted', zero_division=0),
-                    'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                }
-                
-                if 'test_results' not in st.session_state:
-                    st.session_state.test_results = []
-                st.session_state.test_results.append(test_results)
-                
-                st.success("Model testing completed and results saved!")
+            # Automatically select the uploaded dataset
+            test_dataset_name = uploaded_file.name
+        else:
+            # If no file uploaded, we can't proceed
+            return
+    
+    # Run model testing
+    if st.button("Run Model Testing"):
+        model_info = bank_a_models[model_name]
+        model = model_info['model']
+        test_data = st.session_state.datasets[test_dataset_name]
+        
+        # Prepare test data
+        feature_cols = [col for col in test_data.columns if col != 'default' and col != 'fraud']  # Adjust based on target column
+        X_test = test_data[feature_cols]
+        y_test = test_data[test_data.columns[-1]]  # Assuming target is last column
+        
+        # Handle categorical variables
+        X_test_encoded = pd.get_dummies(X_test, drop_first=True)
+        
+        # Make predictions
+        y_pred = model.predict(X_test_encoded)
+        
+        # Calculate metrics
+        accuracy = accuracy_score(y_test, y_pred)
+        
+        st.subheader(f"Testing Results for {model_name}")
+        st.metric("Accuracy", f"{accuracy:.3f}")
+        
+        # Detailed metrics
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Precision", f"{precision_score(y_test, y_pred, average='weighted', zero_division=0):.3f}")
+        with col2:
+            st.metric("Recall", f"{recall_score(y_test, y_pred, average='weighted', zero_division=0):.3f}")
+        with col3:
+            st.metric("F1-Score", f"{f1_score(y_test, y_pred, average='weighted', zero_division=0):.3f}")
+        
+        # Confusion matrix
+        cm = confusion_matrix(y_test, y_pred)
+        fig = px.imshow(cm, text_auto=True, title="Confusion Matrix")
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Save test results
+        test_results = {
+            'model': model_name,
+            'dataset': test_dataset_name,
+            'accuracy': accuracy,
+            'precision': precision_score(y_test, y_pred, average='weighted', zero_division=0),
+            'recall': recall_score(y_test, y_pred, average='weighted', zero_division=0),
+            'f1_score': f1_score(y_test, y_pred, average='weighted', zero_division=0),
+            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        if 'test_results' not in st.session_state:
+            st.session_state.test_results = []
+        st.session_state.test_results.append(test_results)
+        
+        st.success("Model testing completed and results saved!")
 
 def show_model_comparison_demo():
     st.subheader("Model Comparison Demo")
