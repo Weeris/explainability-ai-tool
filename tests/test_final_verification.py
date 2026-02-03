@@ -60,7 +60,7 @@ class TestFinalVerification(unittest.TestCase):
         
         # Check for key functions
         self.assertIn('def main():', content)
-        self.assertIn('def show_bank_view():', content)
+        self.assertIn('def show_bank_a_view():', content)
         self.assertIn('def show_supervisor_view():', content)
         self.assertIn('def show_project_veritas_validation(', content)
         

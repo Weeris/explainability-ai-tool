@@ -61,8 +61,9 @@ config_by_name = {
     "default": DevelopmentConfig
 }
 
-def get_config(config_name: str = None) -> Config:
+def get_config(config_name: str = None):
     """Get configuration by name"""
     if config_name is None:
         config_name = os.environ.get("FLASK_ENV", "default")
-    return config_by_name.get(config_name, config_by_name["default"])
+    config_class = config_by_name.get(config_name, config_by_name["default"])
+    return config_class()

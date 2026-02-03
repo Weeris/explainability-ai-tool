@@ -274,8 +274,8 @@ class TestUtils(unittest.TestCase):
         model_name = f"{model_type}_{dataset_name}_{timestamp}"
         
         # Should contain all components
-        self.assertIn(model_type.replace(' ', '_'), model_name)
-        self.assertIn(dataset_name.replace('.', '_'), model_name)
+        self.assertIn(model_type, model_name)
+        self.assertIn(dataset_name, model_name)
         self.assertIn(timestamp, model_name)
 
 
